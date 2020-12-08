@@ -53,7 +53,7 @@ model_names = default_model_names + customized_models_names
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 
 # Datasets
-parser.add_argument('-d', '--data', default='./data', type=str)           #default is "path to dataset"
+parser.add_argument('-d', '--data', default='/home/jhy/data', type=str)           #default is "path to dataset"
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 # Optimization options
@@ -77,9 +77,9 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='./checkpoint/old_resnet50', type=str, metavar='PATH',   #deault is checkpoint
+parser.add_argument('-c', '--checkpoint', default='../checkpoint/old_resnet50', type=str, metavar='PATH',   #deault is checkpoint
                     help='path to save checkpoint (default: checkpoint)')
-parser.add_argument('--resume', default='../pretrain/checkpoint.pth.tar', type=str, metavar='PATH',  #default is none    '../pretrain/old_resnet50.pth.tar'
+parser.add_argument('--resume', default='../pretrain/old_resnet50.pth.tar', type=str, metavar='PATH',  #default is none    '../pretrain/old_resnet50.pth.tar'
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--modelsize', '-ms', metavar='large', default='large', \
@@ -143,10 +143,6 @@ def main():
         datasets.ImageFolder(traindir, transforms.Compose([
             transforms.RandomResizedCrop(224, scale = data_aug_scale),
             transforms.RandomHorizontalFlip(),
-            # transforms.RandomChoice([transforms.ColorJitter(brightness=random.uniform(0.8,1.2),contrast=random.uniform(0.8,1.2),
-            #                                                 saturation=random.uniform(0.8,1.2)),
-            #                         transforms.RandomGrayscale(p=0.1),
-            #                          ]),
             transforms.ToTensor(),
             normalize,
         ])),
@@ -209,14 +205,15 @@ def main():
         t = model.state_dict()
         c = checkpoint['state_dict']
 
-        if "checkpoint" not in  args.resume:
-            tmp1 = c['module.fc.weight'][0:2]
-            tmp1[1] = c['module.fc.weight'][627]
-            c['module.fc.weight'] = tmp1
-            tmp2 = c['module.fc.bias'][0:2]
-            c['module.fc.bias'] = tmp2
+        # if "checkpoint" not in  args.resume:
+        #     tmp1 = c['module.fc.weight'][0:2]
+        #     tmp1[1] = c['module.fc.weight'][627]
+        #     c['module.fc.weight'] = tmp1
+        #     tmp2 = c['module.fc.bias'][0:2]
+        #     c['module.fc.bias'] = tmp2
             #c['module.fc.weight']*=0
-        model.module.fc = nn.Linear(2048,2,True)
+        model.load_state_dict(c)
+        model.module.fc = nn.Linear(2048,3,True)
         model.cuda()
         flag = True
         for k in t:
@@ -224,7 +221,7 @@ def main():
                 print('not in loading dict! fill it', k, t[k])
                 c[k] = t[k]
                 flag = False
-        model.load_state_dict(c)
+
         if flag:
             print('optimizer load old state')
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -425,7 +422,7 @@ def test(val_loader, model, criterion, epoch, use_cuda):
         loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
-        prec1, prec2 = accuracy(outputs.data, targets.data, topk=(1, 1))        #prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))
+        prec1,prec2 = accuracy(outputs.data, targets.data, topk=(1,1))        #prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))
         # losses.update(loss.data[0], inputs.size(0))
         losses.update(loss.data, inputs.size(0))
         #top1.update(prec1[0], inputs.size(0))
